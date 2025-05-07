@@ -5,10 +5,7 @@ app = Flask(__name__)
 
 def fetch_prices(ticker, asset_type):
     try:
-        if asset_type == "BIST":
-            stock = yf.Ticker(ticker + ".IS")
-        else:
-            stock = yf.Ticker(ticker)
+        stock = yf.Ticker(ticker)
 
         price = stock.history(period="1d")['Close'].iloc[0]
         return price
