@@ -27,5 +27,85 @@ def get_stock_price():
     else:
         return jsonify({'price': price})
 
+
+@app.route('/get_historical_data', methods=['GET'])
+def get_historical_data():
+    try:
+        ticker = request.args.get('ticker', default='AAPL')
+        period = request.args.get('period', default='1mo') 
+        interval = request.args.get('interval', default='1d') 
+
+        stock = yf.Ticker(ticker)
+        data = stock.history(period=period, interval=interval)
+
+        data = data.reset_index()
+        data['Date'] = data['Date'].dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+        result = []
+        for _, row in data.iterrows():
+            result.append({
+                "date": row['Date'],
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close']),
+                "volume": int(row['Volume']),
+                "dividends": float(row.get('Dividends', 0.0)),
+                "stock_splits": float(row.get('Stock Splits', 0.0))
+            })
+
+        print(result)
+        return jsonify({"historicalData": result})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/get_chart_data', methods=['GET'])
+def get_chart_data():
+    try:
+        ticker = request.args.get('ticker', default='AAPL')
+        period = request.args.get('period', default='1mo')
+        interval = request.args.get('interval', default='1d')
+        chart_type = request.args.get('chart_type', default='line').lower()
+
+        stock = yf.Ticker(ticker)
+        data = stock.history(period=period, interval=interval)
+
+        if data.empty:
+            return jsonify({"error": "No data found for the given parameters."}), 404
+
+        data = data.reset_index()
+        data['Date'] = data['Date'].dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+        result = []
+
+        if chart_type == 'line':
+            for _, row in data.iterrows():
+                result.append({
+                    "date": row['Date'],
+                    "value": float(row['Close'])
+                })
+            return jsonify({"chartData": result, "chartType": "line"})
+
+        elif chart_type == 'candle':
+            for _, row in data.iterrows():
+                result.append({
+                    "date": row['Date'],
+                    "open": float(row['Open']),
+                    "high": float(row['High']),
+                    "low": float(row['Low']),
+                    "close": float(row['Close']),
+                    "volume": int(row['Volume'])
+                })
+            return jsonify({"chartData": result, "chartType": "candle"})
+
+        else:
+            return jsonify({"error": "Invalid chart_type. Must be 'line' or 'candle'."}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
 if __name__ == '__main__':
     app.run()
