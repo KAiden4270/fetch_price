@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 import pandas as pd
-from services.market_data import get_history, get_close_price
+from services.market_data import get_history, get_close_price, get_price_for_date
 from utils.formatting import format_iso_datetime, error_response
 
 prices_bp = Blueprint('prices', __name__)
@@ -17,6 +17,26 @@ def get_stock_price():
     try:
         price = get_close_price(ticker_symbol)
         return jsonify({'price': price})
+    except Exception as e:
+        return error_response(str(e), 500)
+
+
+@prices_bp.route('/get_price_for_date', methods=['GET'])
+def get_price_for_date_endpoint():
+    try:
+        ticker = request.args.get('ticker')
+        date = request.args.get('date')
+
+        if not ticker:
+            return error_response('ticker parameter is required', 400)
+        if not date:
+            return error_response('date parameter is required (format: YYYY-MM-DD)', 400)
+
+        result = get_price_for_date(ticker, date)
+        return jsonify(result)
+
+    except ValueError as ve:
+        return error_response(str(ve), 400)
     except Exception as e:
         return error_response(str(e), 500)
 
